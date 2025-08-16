@@ -1,3 +1,55 @@
-from django.shortcuts import render
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from .serializers import ProductSerializer, CategorySerializer, AttributeSerializer
+from .models import Product, Category, Attribute
 
-# Create your views here.
+class ProductListView(APIView):
+    def get(self, request):
+        product_id = request.query_params.get('id', None)  # URL query param: ?id=1
+        if product_id:
+            try:
+                product = Product.objects.get(id=product_id)
+                serializer = ProductSerializer(product)
+                return Response({"items": [serializer.data]})
+            except Product.DoesNotExist:
+                return Response({"detail": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            products = Product.objects.all()
+            serializer = ProductSerializer(products, many=True)
+            return Response({"items": serializer.data})
+
+
+
+class CategoryListView(APIView):
+    def get(self, request):
+        category_id = request.query_params.get('id', None)
+
+        if category_id:
+            try:
+                category = Category.objects.get(id=category_id)
+                serializer = CategorySerializer(category)
+                return Response({"category": serializer.data})
+            except Category.DoesNotExist:
+                return Response({"error": "Category not found"}, status=404)
+
+        # If no 'id' is provided, return a list of all categories
+        categories = Category.objects.all()
+        serializer = CategorySerializer(categories, many=True)
+        return Response({"items": serializer.data})
+
+class AttributeListView(APIView):
+    def get(self, request):
+        attribute_id = request.query_params.get('id', None)
+
+        if attribute_id:
+            try:
+                attribute = Attribute.objects.get(id=attribute_id)
+                serializer = AttributeSerializer(attribute)
+                return Response({"attribute": serializer.data})
+            except Attribute.DoesNotExist:
+                return Response({"error": "Attribute not found"}, status=404)
+
+        # If no 'id' is provided, return a list of all attributes
+        attributes = Attribute.objects.all()
+        serializer = AttributeSerializer(attributes, many=True)
+        return Response({"items": serializer.data})

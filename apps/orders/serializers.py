@@ -1,0 +1,66 @@
+from rest_framework import serializers
+from .models import Order, OrderItem, Discount, ProductAttribute
+from apps.accounts.models import Customer, CustomerAddress
+
+# Order Item Serializer
+class OrderItemSerializer(serializers.ModelSerializer):
+    product_id = serializers.IntegerField(source='product.id')
+    attribute_id = serializers.PrimaryKeyRelatedField(
+        source='attributes',
+        queryset=ProductAttribute.objects.all(),
+        many=True
+    )
+
+    class Meta:
+        model = OrderItem
+        fields = ['product_id', 'attribute_id', 'quantity', 'unit_price']
+
+# Shipping Info Serializer
+class ShippingInfoSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    firstName = serializers.CharField()
+    lastName = serializers.CharField()
+    address = serializers.CharField()
+    city = serializers.CharField()
+    country = serializers.CharField()
+    postalCode = serializers.CharField()
+    paymentMethod = serializers.CharField()
+    password = serializers.CharField(required=False, write_only=True)  # login user only
+
+# Customer Payload Serializer
+class CustomerPayloadSerializer(serializers.Serializer):
+    customer_id = serializers.IntegerField(required=False)
+    shipping_info = ShippingInfoSerializer()
+
+# Summary Serializer
+class SummarySerializer(serializers.Serializer):
+    subtotal = serializers.DecimalField(max_digits=10, decimal_places=2)
+    delivery = serializers.DecimalField(max_digits=10, decimal_places=2)
+    discount_code = serializers.CharField(allow_null=True, required=False)
+    discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    total = serializers.DecimalField(max_digits=10, decimal_places=2)
+
+# Order Serializer
+class OrderSerializer(serializers.Serializer):
+    customer_payload = CustomerPayloadSerializer()
+    payment_method = serializers.CharField()
+    order_items = OrderItemSerializer(many=True)
+    summary = SummarySerializer()
+
+# Discount Serializer
+class DiscountSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Discount
+        fields = ['DISCOUNT_ID', 'CODE', 'DESCRIPTION', 'DISCOUNT_TYPE', 'DISCOUNT_VALUE', 
+                  'MIN_PURCHASE_AMOUNT', 'USAGE_COUNT', 'IS_ACTIVE']
+        read_only_fields = ['DISCOUNT_ID', 'CODE', 'DESCRIPTION', 'DISCOUNT_TYPE', 
+                            'DISCOUNT_VALUE', 'MIN_PURCHASE_AMOUNT', 'USAGE_COUNT', 'IS_ACTIVE']
+
+    DISCOUNT_ID = serializers.IntegerField(source='id')
+    CODE = serializers.CharField(source='code')
+    DESCRIPTION = serializers.CharField(source='description')
+    DISCOUNT_TYPE = serializers.CharField(source='discount_type')
+    DISCOUNT_VALUE = serializers.DecimalField(source='discount_value', max_digits=10, decimal_places=2)
+    MIN_PURCHASE_AMOUNT = serializers.DecimalField(source='min_purchase_amount', max_digits=10, decimal_places=2)
+    USAGE_COUNT = serializers.IntegerField(source='usage_count')
+    IS_ACTIVE = serializers.BooleanField(source='is_active')
