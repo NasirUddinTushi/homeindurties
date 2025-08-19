@@ -5,8 +5,10 @@ from rest_framework import status
 from .models import Order, OrderItem, Discount
 from .serializers import OrderSerializer, DiscountSerializer
 from apps.accounts.models import Customer, CustomerAddress
+from rest_framework.permissions import AllowAny
 
 class OrderCreateAPIView(APIView):
+    permission_classes = [AllowAny]
     def post(self, request):
         serializer = OrderSerializer(data=request.data)
         if serializer.is_valid():
