@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import Customer, CustomerAddress
+from unfold.admin import ModelAdmin
 
 @admin.register(Customer)
 class CustomerAdmin(UserAdmin):
@@ -10,5 +11,5 @@ class CustomerAdmin(UserAdmin):
     ordering = ['email']
 
 @admin.register(CustomerAddress)
-class CustomerAddressAdmin(admin.ModelAdmin):
+class CustomerAddressAdmin(ModelAdmin):
     list_display = ['customer', 'street_address', 'city', 'postal_code', 'is_default']
