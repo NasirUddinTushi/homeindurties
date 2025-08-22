@@ -22,7 +22,7 @@ class SocialLink(models.Model):
     ]
     platform = models.CharField(max_length=50, choices=PLATFORM_CHOICES)
     url = models.URLField(max_length=500)
-    icon_class = models.CharField(max_length=50, blank=True, null=True)  # নতুন field
+    icon_class = models.ImageField(max_length=50, blank=True, null=True)  
 
     def __str__(self):
         return self.platform

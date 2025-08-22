@@ -1,19 +1,33 @@
 from rest_framework import serializers
-from .models import Order, OrderItem, Discount, ProductAttribute
+from .models import Order, OrderItem, Discount
 from apps.accounts.models import Customer, CustomerAddress
+from apps.products.models import Product, AttributeValue   # ✅ এখান থেকে import
+
 
 # Order Item Serializer
 class OrderItemSerializer(serializers.ModelSerializer):
-    product_id = serializers.IntegerField(source='product.id')
+    product_id = serializers.PrimaryKeyRelatedField(
+        source='product',
+        queryset=Product.objects.all(),
+        error_messages={
+            "does_not_exist": "Product with ID {pk_value} does not exist."
+        }
+    )
     attribute_id = serializers.PrimaryKeyRelatedField(
         source='attributes',
-        queryset=ProductAttribute.objects.all(),
-        many=True
+        queryset=AttributeValue.objects.all(),   # ✅ এখন AttributeValue ব্যবহার হচ্ছে
+        many=True,
+        required=False,
+        allow_empty=True,
+        error_messages={
+            "does_not_exist": "AttributeValue with ID {pk_value} does not exist."
+        }
     )
 
     class Meta:
         model = OrderItem
         fields = ['product_id', 'attribute_id', 'quantity', 'unit_price']
+
 
 # Shipping Info Serializer
 class ShippingInfoSerializer(serializers.Serializer):
@@ -25,12 +39,14 @@ class ShippingInfoSerializer(serializers.Serializer):
     country = serializers.CharField()
     postalCode = serializers.CharField()
     paymentMethod = serializers.CharField()
-    password = serializers.CharField(required=False, write_only=True)  # login user only
+    password = serializers.CharField(required=False, allow_blank=True, write_only=True)
+
 
 # Customer Payload Serializer
 class CustomerPayloadSerializer(serializers.Serializer):
-    customer_id = serializers.IntegerField(required=False)
+    customer_id = serializers.IntegerField(required=False, allow_null=True)
     shipping_info = ShippingInfoSerializer()
+
 
 # Summary Serializer
 class SummarySerializer(serializers.Serializer):
@@ -40,6 +56,7 @@ class SummarySerializer(serializers.Serializer):
     discount_amount = serializers.DecimalField(max_digits=10, decimal_places=2)
     total = serializers.DecimalField(max_digits=10, decimal_places=2)
 
+
 # Order Serializer
 class OrderSerializer(serializers.Serializer):
     customer_payload = CustomerPayloadSerializer()
@@ -47,15 +64,9 @@ class OrderSerializer(serializers.Serializer):
     order_items = OrderItemSerializer(many=True)
     summary = SummarySerializer()
 
+
 # Discount Serializer
 class DiscountSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Discount
-        fields = ['DISCOUNT_ID', 'CODE', 'DESCRIPTION', 'DISCOUNT_TYPE', 'DISCOUNT_VALUE', 
-                  'MIN_PURCHASE_AMOUNT', 'USAGE_COUNT', 'IS_ACTIVE']
-        read_only_fields = ['DISCOUNT_ID', 'CODE', 'DESCRIPTION', 'DISCOUNT_TYPE', 
-                            'DISCOUNT_VALUE', 'MIN_PURCHASE_AMOUNT', 'USAGE_COUNT', 'IS_ACTIVE']
-
     DISCOUNT_ID = serializers.IntegerField(source='id')
     CODE = serializers.CharField(source='code')
     DESCRIPTION = serializers.CharField(source='description')
@@ -64,3 +75,11 @@ class DiscountSerializer(serializers.ModelSerializer):
     MIN_PURCHASE_AMOUNT = serializers.DecimalField(source='min_purchase_amount', max_digits=10, decimal_places=2)
     USAGE_COUNT = serializers.IntegerField(source='usage_count')
     IS_ACTIVE = serializers.BooleanField(source='is_active')
+
+    class Meta:
+        model = Discount
+        fields = [
+            'DISCOUNT_ID', 'CODE', 'DESCRIPTION', 'DISCOUNT_TYPE', 'DISCOUNT_VALUE',
+            'MIN_PURCHASE_AMOUNT', 'USAGE_COUNT', 'IS_ACTIVE'
+        ]
+        read_only_fields = fields

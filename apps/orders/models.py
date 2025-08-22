@@ -1,18 +1,8 @@
 from django.db import models
 from apps.accounts.models import Customer, CustomerAddress
+from apps.products.models import Product, AttributeValue   # ✅ import from products
 
-# Product
-class Product(models.Model):
-    name = models.CharField(max_length=255)
-    price = models.DecimalField(max_digits=10, decimal_places=2)
 
-# Product Attribute
-class ProductAttribute(models.Model):
-    product = models.ForeignKey(Product, on_delete=models.CASCADE, related_name="attributes")
-    name = models.CharField(max_length=100)
-    extra_price = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-
-# Discount
 class Discount(models.Model):
     code = models.CharField(max_length=50, unique=True)
     description = models.TextField(blank=True, null=True)
@@ -29,7 +19,7 @@ class Discount(models.Model):
     def __str__(self):
         return self.code
 
-# Order
+
 class Order(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE)
     shipping_address = models.ForeignKey(CustomerAddress, on_delete=models.SET_NULL, null=True)
@@ -41,10 +31,10 @@ class Order(models.Model):
     total = models.DecimalField(max_digits=10, decimal_places=2)
     created_at = models.DateTimeField(auto_now_add=True)
 
-# Order Item
+
 class OrderItem(models.Model):
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="items")
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True)
-    attributes = models.ManyToManyField(ProductAttribute, blank=True)
+    attributes = models.ManyToManyField(AttributeValue, blank=True)   # ✅ use AttributeValue
     quantity = models.IntegerField()
     unit_price = models.DecimalField(max_digits=10, decimal_places=2)

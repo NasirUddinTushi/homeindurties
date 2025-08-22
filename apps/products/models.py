@@ -1,14 +1,13 @@
 from django.db import models
 
-# Category
-# models.py
+
 class Category(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
     parent = models.ForeignKey(
         'self', null=True, blank=True, on_delete=models.SET_NULL, related_name='children'
     )
-    image = models.ImageField(upload_to='category_images/', null=True, blank=True)  # Image Field
+    image = models.ImageField(upload_to='category_images/', null=True, blank=True)
 
     def save(self, *args, **kwargs):
         if self.parent and self.parent.id == self.id:
@@ -19,15 +18,13 @@ class Category(models.Model):
         return self.name
 
 
-
-# Attribute
 class Attribute(models.Model):
     name = models.CharField(max_length=255)
 
     def __str__(self):
         return self.name
 
-# Attribute Value
+
 class AttributeValue(models.Model):
     attribute = models.ForeignKey(Attribute, related_name='values', on_delete=models.CASCADE)
     value = models.CharField(max_length=255)
@@ -35,7 +32,7 @@ class AttributeValue(models.Model):
     def __str__(self):
         return f"{self.attribute.name}: {self.value}"
 
-# Product
+
 class Product(models.Model):
     name = models.CharField(max_length=255)
     slug = models.SlugField(unique=True)
@@ -45,12 +42,12 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2)
     sale_price = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     short_description = models.TextField(blank=True)
-    attributes = models.ManyToManyField('AttributeValue', blank=True)
+    attributes = models.ManyToManyField(AttributeValue, blank=True)  # ✅ final
 
     def __str__(self):
         return self.name
 
-# Product Images
+
 class ProductImage(models.Model):
     product = models.ForeignKey(Product, related_name='images', on_delete=models.CASCADE)
     image = models.ImageField(upload_to='product_images/')

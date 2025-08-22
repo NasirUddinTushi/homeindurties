@@ -9,70 +9,82 @@ from rest_framework.permissions import AllowAny
 
 class OrderCreateAPIView(APIView):
     permission_classes = [AllowAny]
+
     def post(self, request):
         serializer = OrderSerializer(data=request.data)
-        if serializer.is_valid():
-            data = serializer.validated_data
-            customer_data = data['customer_payload']
-            shipping_info = customer_data['shipping_info']
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
 
-            # Guest user: create Customer
-            if not customer_data.get('customer_id'):
+        customer_payload = data["customer_payload"]
+        shipping_info = customer_payload["shipping_info"]
+
+        # Login user
+        if customer_payload.get("customer_id"):
+            try:
+                customer = Customer.objects.get(id=customer_payload["customer_id"])
+            except Customer.DoesNotExist:
+                return Response({"error": "Customer not found."}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Guest user
+        else:
+            customer = Customer.objects.filter(email=shipping_info["email"]).first()
+            if not customer:
                 customer = Customer.objects.create(
-                    first_name=shipping_info['firstName'],
-                    last_name=shipping_info['lastName'],
-                    email=shipping_info['email']
+                    email=shipping_info["email"],
+                    first_name=shipping_info["firstName"],
+                    last_name=shipping_info["lastName"],
                 )
-            else:
-                customer = Customer.objects.get(id=customer_data['customer_id'])
+                if shipping_info.get("password"):
+                    customer.set_password(shipping_info["password"])
+                    customer.save()
 
-            # Create shipping address
-            address = CustomerAddress.objects.create(
-                customer=customer,
-                street_address=shipping_info['address'],
-                city=shipping_info['city'],
-                state="",
-                country=shipping_info['country'],
-                postal_code=shipping_info['postalCode'],
-                address_type="shipping",
-                is_default=True
+        # Create shipping address
+        shipping_address = CustomerAddress.objects.create(
+            customer=customer,
+            street_address=shipping_info["address"],
+            city=shipping_info["city"],
+            country=shipping_info["country"],
+            postal_code=shipping_info["postalCode"],
+            address_type="shipping",
+            is_default=True
+        )
+
+        # Create order
+        order = Order.objects.create(
+            customer=customer,
+            shipping_address=shipping_address,
+            payment_method=data["payment_method"],
+            subtotal=data["summary"]["subtotal"],
+            delivery_charge=data["summary"]["delivery"],
+            discount_code=data["summary"].get("discount_code"),
+            discount_amount=data["summary"]["discount_amount"],
+            total=data["summary"]["total"],
+        )
+
+        # Create order items
+        for item in data["order_items"]:
+            order_item = OrderItem.objects.create(
+                order=order,
+                product=item["product"],
+                quantity=item["quantity"],
+                unit_price=item["unit_price"],
             )
+            if "attributes" in item:
+                order_item.attributes.set(item["attributes"])
 
-            summary = data['summary']
+        return Response(
+            {"success": True, "message": "Order placed successfully!", "order_id": order.id},
+            status=status.HTTP_201_CREATED
+        )
 
-            order = Order.objects.create(
-                customer=customer,
-                shipping_address=address,
-                payment_method=data['payment_method'],
-                subtotal=summary['subtotal'],
-                delivery_charge=summary['delivery'],
-                discount_code=summary.get('discount_code'),
-                discount_amount=summary['discount_amount'],
-                total=summary['total']
-            )
-
-            # Order items
-            for item in data['order_items']:
-                order_item = OrderItem.objects.create(
-                    order=order,
-                    product_id=item['product']['id'],
-                    quantity=item['quantity'],
-                    unit_price=item['unit_price']
-                )
-                order_item.attributes.set(item['attributes'])
-                order_item.save()
-
-            return Response({"message": "Order created successfully", "order_id": order.id}, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class DiscountListAPIView(APIView):
+    permission_classes = [AllowAny]
+
     def get(self, request, code):
         try:
-            # Fetch the discount based on the provided code
             discount = Discount.objects.get(code=code, is_active=True)
             serializer = DiscountSerializer(discount)
-            
-            # Return the response in the desired format
             return Response({
                 "MapList": [serializer.data],
                 "Message": "Data Loaded.",
@@ -81,7 +93,6 @@ class DiscountListAPIView(APIView):
             })
 
         except Discount.DoesNotExist:
-            # Handle case where the discount code does not exist
             return Response({
                 "Message": "Discount code not found.",
                 "Code": "404",

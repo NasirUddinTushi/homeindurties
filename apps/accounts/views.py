@@ -14,13 +14,14 @@ from .serializers import (
 
 # Register
 class RegisterView(APIView):
-    permission_classes = []
+    permission_classes = []  # no auth needed
 
     def post(self, request):
         serializer = CustomerRegisterSerializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.save()
-        return Response(CustomerProfileSerializer(user).data, status=201)
+        if serializer.is_valid():
+            user = serializer.save()
+            return Response({"message": "Registration successful"}, status=status.HTTP_201_CREATED)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 # Login
 class LoginView(APIView):
@@ -49,7 +50,7 @@ class LogoutView(APIView):
 
 # Profile
 class ProfileView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def get(self, request):
         serializer = CustomerProfileSerializer(request.user)
@@ -57,7 +58,7 @@ class ProfileView(APIView):
 
 # Customer Address
 class CustomerAddressView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = []
 
     def get(self, request):
         addresses = CustomerAddress.objects.filter(customer=request.user)
