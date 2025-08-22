@@ -1,10 +1,9 @@
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.contrib.auth import authenticate, login, logout
 from .models import Customer, CustomerAddress
 from rest_framework import status
-
 from .serializers import (
     CustomerRegisterSerializer,
     CustomerLoginSerializer,
@@ -14,7 +13,7 @@ from .serializers import (
 
 # Register
 class RegisterView(APIView):
-    permission_classes = []  # no auth needed
+    permission_classes = [AllowAny]
 
     def post(self, request):
         serializer = CustomerRegisterSerializer(data=request.data)
@@ -25,20 +24,17 @@ class RegisterView(APIView):
 
 # Login
 class LoginView(APIView):
-    permission_classes = []  # No permission required for login
+    permission_classes = [AllowAny]
 
     def post(self, request):
         email = request.data.get('email')
         password = request.data.get('password')
 
-        # Authentication process
         user = authenticate(request, email=email, password=password)
-
-        if user is not None:
+        if user:
             login(request, user)  # Session-based login
             return Response({"message": "Login successful", "user": email}, status=status.HTTP_200_OK)
-        else:
-            return Response({"message": "Invalid email or password"}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"message": "Invalid email or password"}, status=status.HTTP_400_BAD_REQUEST)
 
 # Logout
 class LogoutView(APIView):
@@ -50,18 +46,32 @@ class LogoutView(APIView):
 
 # Profile
 class ProfileView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request):
-        serializer = CustomerProfileSerializer(request.user)
-        return Response(serializer.data)
+        if request.user.is_authenticated:
+            serializer = CustomerProfileSerializer(request.user)
+            return Response(serializer.data)
+        return Response({"detail": "User not logged in"}, status=status.HTTP_401_UNAUTHORIZED)
 
 # Customer Address
 class CustomerAddressView(APIView):
-    permission_classes = []
+    permission_classes = [AllowAny]
 
     def get(self, request):
-        addresses = CustomerAddress.objects.filter(customer=request.user)
+        if request.user.is_authenticated:
+            # Logged-in user
+            addresses = CustomerAddress.objects.filter(customer=request.user)
+        else:
+            # Guest user, provide email in query param
+            email = request.query_params.get("email")
+            if not email:
+                return Response({"detail": "Email query parameter required for guest"}, status=status.HTTP_400_BAD_REQUEST)
+            customer = Customer.objects.filter(email=email).first()
+            if not customer:
+                return Response({"detail": "Customer not found"}, status=status.HTTP_404_NOT_FOUND)
+            addresses = CustomerAddress.objects.filter(customer=customer)
+
         serializer = CustomerAddressSerializer(addresses, many=True)
         return Response({
             "items": serializer.data,

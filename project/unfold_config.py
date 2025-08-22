@@ -9,7 +9,7 @@ UNFOLD = {
 
     "SIDEBAR": {
         "show_search": True,
-        "show_all_applications": True,  # শুধু custom apps দেখাতে চাইলে False
+        "show_all_applications": True,
         "navigation": [
             # Dashboard
             {
@@ -89,6 +89,24 @@ UNFOLD = {
                         "title": "Addresses",
                         "icon": "location_on",
                         "link": reverse_lazy("admin:accounts_customeraddress_changelist"),
+                    },
+                ],
+            },
+
+            # Site Features & Social Links
+            {
+                "title": "Site Settings",
+                "separator": True,
+                "items": [
+                    {
+                        "title": "Site Features",
+                        "icon": "widgets",
+                        "link": reverse_lazy("admin:site_config_sitefeature_changelist"),
+                    },
+                    {
+                        "title": "Social Links",
+                        "icon": "share",
+                        "link": reverse_lazy("admin:site_config_sociallink_changelist"),
                     },
                 ],
             },
