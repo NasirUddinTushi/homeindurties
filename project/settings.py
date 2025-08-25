@@ -30,6 +30,7 @@ INSTALLED_APPS = [
     "apps.site_config",
     "apps.products",
     "apps.orders",
+    "apps.cms",
 ]
 
 MIDDLEWARE = [
