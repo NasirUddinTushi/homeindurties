@@ -28,7 +28,7 @@ class ProductImageSerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
-    attribute_id = serializers.SerializerMethodField()
+    attribute_id = serializers.SerializerMethodField()  # Attribute IDs
     category_id = serializers.IntegerField(source='category.id', read_only=True)
 
     class Meta:
@@ -48,12 +48,13 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
 
     def get_images(self, obj):
-        
         return [img.image.url for img in obj.images.all()]
 
     def get_attribute_id(self, obj):
-       
-        return list(obj.attributes.all().values_list("id", flat=True))
+        # ✅ Fetch distinct Attribute IDs from linked AttributeValues
+        return list(obj.attributes.values_list('attribute_id', flat=True).distinct())
+
+
 class CategorySerializer(serializers.ModelSerializer):
     category_id = serializers.IntegerField(source='id')
     category_name = serializers.CharField(source='name')

@@ -1,6 +1,6 @@
 from django.contrib import admin
-from .models import Order, OrderItem, Discount 
 from unfold.admin import ModelAdmin
+from .models import Order, OrderItem, Discount
 
 @admin.register(Order)
 class OrderAdmin(ModelAdmin):
