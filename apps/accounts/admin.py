@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from .models import Customer, CustomerAddress
-from unfold.admin import ModelAdmin
+from django.contrib.auth.models import Group
+
+admin.site.unregister(Group)
 
 
 @admin.register(Customer)
@@ -11,7 +13,6 @@ class CustomerAdmin(UserAdmin):
     search_fields = ['email', 'first_name', 'last_name']
     ordering = ['email']
 
-    # date_joined & last_login read-only হবে
     readonly_fields = ('date_joined', 'last_login')
 
     fieldsets = (
@@ -30,6 +31,6 @@ class CustomerAdmin(UserAdmin):
 
 
 @admin.register(CustomerAddress)
-class CustomerAddressAdmin(ModelAdmin):
+class CustomerAddressAdmin(admin.ModelAdmin):
     list_display = ['customer', 'street_address', 'city', 'postal_code', 'is_default', 'created_at']
     search_fields = ['customer__email', 'street_address', 'city']

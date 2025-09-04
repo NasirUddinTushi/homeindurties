@@ -4,25 +4,31 @@ from .serializers import ProductSerializer, CategorySerializer, AttributeSeriali
 from .models import Product, Category, Attribute
 from rest_framework import status
 
-
 class ProductListView(APIView):
     def get(self, request):
-        product_id = request.query_params.get('id', None)  # URL query param: ?id=1
+        product_id = request.query_params.get('id', None)
+
+        # পারফরম্যান্স টিউনিং
+        qs = (
+            Product.objects
+            .select_related('category')
+            .prefetch_related(
+                'images',
+                'product_attributes__attribute_value__attribute'
+            )
+        )
+
         if product_id:
             try:
-                product = Product.objects.get(id=product_id)
-                serializer = ProductSerializer(product)
+                product = qs.get(id=product_id)
+                serializer = ProductSerializer(product, context={'request': request})
                 return Response({"items": [serializer.data]}, status=status.HTTP_200_OK)
             except Product.DoesNotExist:
-                return Response(
-                    {"detail": "Product not found"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({"detail": "Product not found"}, status=status.HTTP_404_NOT_FOUND)
         else:
-            products = Product.objects.all()
-            serializer = ProductSerializer(products, many=True)
+            products = qs.all()
+            serializer = ProductSerializer(products, many=True, context={'request': request})
             return Response({"items": serializer.data}, status=status.HTTP_200_OK)
-
 
 
 class CategoryListView(APIView):
@@ -34,13 +40,12 @@ class CategoryListView(APIView):
                 serializer = CategorySerializer(category)
                 return Response({"category": serializer.data}, status=status.HTTP_200_OK)
             except Category.DoesNotExist:
-                return Response(
-                    {"error": "Category not found"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({"error": "Category not found"}, status=status.HTTP_404_NOT_FOUND)
+
         categories = Category.objects.all()
         serializer = CategorySerializer(categories, many=True)
         return Response({"items": serializer.data}, status=status.HTTP_200_OK)
+
 
 class AttributeListView(APIView):
     def get(self, request):
@@ -51,10 +56,8 @@ class AttributeListView(APIView):
                 serializer = AttributeSerializer(attribute)
                 return Response({"attribute": serializer.data}, status=status.HTTP_200_OK)
             except Attribute.DoesNotExist:
-                return Response(
-                    {"error": "Attribute not found"},
-                    status=status.HTTP_404_NOT_FOUND
-                )
+                return Response({"error": "Attribute not found"}, status=status.HTTP_404_NOT_FOUND)
+
         attributes = Attribute.objects.all()
         serializer = AttributeSerializer(attributes, many=True)
         return Response({"items": serializer.data}, status=status.HTTP_200_OK)

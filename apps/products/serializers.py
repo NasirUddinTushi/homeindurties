@@ -6,6 +6,7 @@ class AttributeValueSerializer(serializers.ModelSerializer):
         model = AttributeValue
         fields = ['id', 'value']
 
+
 class AttributeSerializer(serializers.ModelSerializer):
     attribute_id = serializers.IntegerField(source='id')
     attribute_name = serializers.CharField(source='name')
@@ -16,20 +17,24 @@ class AttributeSerializer(serializers.ModelSerializer):
         fields = ['attribute_id', 'attribute_name', 'attribute_value']
 
     def get_attribute_value(self, obj):
-        
         values = obj.values.all()
-        return [v.value for v in values]  
-        
+        return [v.value for v in values]
+
 
 class ProductImageSerializer(serializers.ModelSerializer):
     class Meta:
         model = ProductImage
         fields = ['image']
 
+
 class ProductSerializer(serializers.ModelSerializer):
     images = serializers.SerializerMethodField()
-    attribute_id = serializers.SerializerMethodField()  # Attribute IDs
+    attribute_id = serializers.SerializerMethodField()   # distinct Attribute IDs
     category_id = serializers.IntegerField(source='category.id', read_only=True)
+
+    # যদি একদম স্ট্রিং "true"/"false" দরকার হয়, নিচের ২টা আনকমেন্ট করুন:
+    # is_bestseller = serializers.SerializerMethodField()
+    # is_new = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
@@ -38,7 +43,7 @@ class ProductSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "category_id",
-            "is_bestseller",
+            "is_bestseller",   # বা MethodField ব্যবহার করলে Meta-তেই থাকবে
             "is_new",
             "price",
             "sale_price",
@@ -48,11 +53,33 @@ class ProductSerializer(serializers.ModelSerializer):
         ]
 
     def get_images(self, obj):
-        return [img.image.url for img in obj.images.all()]
+        """
+        ইমেজকে absolute URL বানাতে request কনটেক্সট ব্যবহার করছি।
+        """
+        request = self.context.get('request')
+        urls = []
+        for img in obj.images.all():
+            url = img.image.url  # মিডিয়ার ভেতরে যেটাই থাকুক, url দেবে
+            urls.append(request.build_absolute_uri(url) if request else url)
+        return urls
 
     def get_attribute_id(self, obj):
-        # ✅ Fetch distinct Attribute IDs from linked AttributeValues
-        return list(obj.attributes.values_list('attribute_id', flat=True).distinct())
+        """
+        Product -> ProductAttribute -> AttributeValue -> Attribute
+        থেকে distinct attribute.id লিস্ট
+        """
+        return list(
+            AttributeValue.objects.filter(productattribute__product=obj)
+            .values_list('attribute_id', flat=True)
+            .distinct()
+        )
+
+    # যদি স্ট্রিং "true"/"false" ফোর্স করতে চান:
+    # def get_is_bestseller(self, obj):
+    #     return "true" if obj.is_bestseller else "false"
+    #
+    # def get_is_new(self, obj):
+    #     return "true" if obj.is_new else "false"
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -60,8 +87,6 @@ class CategorySerializer(serializers.ModelSerializer):
     category_name = serializers.CharField(source='name')
     category_slug = serializers.CharField(source='slug')
     parent_category_id = serializers.IntegerField(source='parent.id', allow_null=True)
-    
-    # Custom fields
     show_in_footer = serializers.SerializerMethodField()
     category_image_url = serializers.SerializerMethodField()
 
@@ -77,11 +102,7 @@ class CategorySerializer(serializers.ModelSerializer):
         ]
 
     def get_show_in_footer(self, obj):
-        # Default value for show_in_footer (can be customized as per need)
         return 0
 
     def get_category_image_url(self, obj):
-        # If there is an image associated with the category, return its URL
-        if obj.image:
-            return obj.image.url
-        return ""  # If no image, return an empty string
+        return obj.image.url if obj.image else ""
